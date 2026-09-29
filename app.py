@@ -92,11 +92,36 @@ def chart(col, title, unit, goal=None, bars=False):
         fig.add_hline(y=goal, line_dash="dash", line_color="#d48637", annotation_text=f"Goal: {goal:g} {unit}")
     fig.update_layout(height=310, margin=dict(l=10,r=20,t=30,b=10), xaxis_title="Date", yaxis_title=unit, showlegend=False)
     fig.update_xaxes(tickformat="%b %d", dtick=86400000 if len(values) <= 14 else None)
-    if col != weight:
-        fig.update_yaxes(rangemode="tozero")
     st.plotly_chart(fig, use_container_width=True)
 
 chart(weight, "Weight over time", "lbs")
+
+st.subheader("Weight moving average")
+st.caption("Each window is a trailing average: mean weight over that many days. Unrecorded days are left out rather than treated as zero. With limited history the windows track together; they separate as you build up more days.")
+w3 = df.dropna(subset=[weight]).copy()
+if w3.empty:
+    st.info("Add weight measurements to see your moving average.")
+else:
+    weight_daily = df.set_index("Date")[weight].reindex(pd.date_range(df.Date.min(), df.Date.max(), freq="D"))
+    weight_windows = [("Last 7 days", "7D", 7), ("Last 30 days", "30D", 30), ("Last 90 days", "90D", 90), ("Trailing year", "365D", 365)]
+    weight_pace = pd.DataFrame({label: weight_daily.rolling(offset, min_periods=1).mean() for label, offset, _ in weight_windows})
+    weight_recorded = pd.DataFrame({label: weight_daily.rolling(offset, min_periods=1).count() for label, offset, _ in weight_windows})
+    weight_elapsed = (weight_pace.index - df.Date.min()).days + 1
+
+    cols = st.columns(len(weight_windows))
+    for box, (label, offset, span) in zip(cols, weight_windows):
+        avg = weight_pace[label].iloc[-1]
+        days_recorded = int(weight_recorded[label].iloc[-1])
+        days_in_window = int(min(span, weight_elapsed[-1]))
+        box.metric(label, f"{avg:.1f} lbs")
+        box.caption(f"{days_recorded} of {days_in_window} days recorded")
+
+    fig = go.Figure()
+    weight_colors = {"Last 7 days": "#2a78d6", "Last 30 days": "#eb6834", "Last 90 days": "#1baf7a", "Trailing year": "#eda100"}
+    for label, _, _ in weight_windows:
+        fig.add_scatter(x=weight_pace.index, y=weight_pace[label], mode="lines", name=label, line_color=weight_colors[label], connectgaps=True)
+    fig.update_layout(height=340, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="lbs", legend=dict(orientation="h", y=-0.25))
+    st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("Nutrition")
 nutrients = [("Calories", "Calories", "kcal", calorie_goal), ("Protein (g)", "Protein", "g", protein_goal), ("Fiber (g)", "Fiber", "g", fiber_goal)]
@@ -126,12 +151,11 @@ for ncol, nlabel, nunit, ngoal in nutrients:
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
     fig = go.Figure()
-    n_colors = {"Last 7 days": "#b96048", "Last 30 days": "#d48637", "Last 90 days": "#527bba", "Trailing year": "#348979"}
+    n_colors = {"Last 7 days": "#2a78d6", "Last 30 days": "#eb6834", "Last 90 days": "#1baf7a", "Trailing year": "#eda100"}
     for label, _, _ in n_windows:
         fig.add_scatter(x=n_pace.index, y=n_pace[label], mode="lines", name=label, line_color=n_colors[label], connectgaps=True)
     fig.add_hline(y=ngoal, line_dash="dash", line_color="#888", annotation_text=f"Goal: {ngoal:g} {nunit}")
     fig.update_layout(height=300, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title=nunit, legend=dict(orientation="h", y=-0.3))
-    fig.update_yaxes(rangemode="tozero")
     st.plotly_chart(fig, use_container_width=True)
 
 chart(work, "Daily work hours", "hours", bars=True)
@@ -175,12 +199,11 @@ else:
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
     fig = go.Figure()
-    colors = {"Last 7 days": "#b96048", "Last 30 days": "#d48637", "Last 90 days": "#527bba", "Trailing year": "#348979"}
+    colors = {"Last 7 days": "#2a78d6", "Last 30 days": "#eb6834", "Last 90 days": "#1baf7a", "Trailing year": "#eda100"}
     for label, _, _ in windows:
         fig.add_scatter(x=pace.index, y=pace[label], mode="lines", name=label, line_color=colors[label], connectgaps=True)
     fig.add_hline(y=40, line_dash="dash", line_color="#888", annotation_text="Goal: 40 hrs/wk")
     fig.update_layout(height=340, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="hrs/week", legend=dict(orientation="h", y=-0.25))
-    fig.update_yaxes(rangemode="tozero")
     st.plotly_chart(fig, use_container_width=True)
 
 chart(sleep, "Sleep over time", "hours", goal=sleep_goal)
@@ -207,12 +230,11 @@ else:
         box.caption(f"{nights_recorded} of {nights_in_window} nights recorded")
 
     fig = go.Figure()
-    sleep_colors = {"Last 7 nights": "#b96048", "Last 30 nights": "#d48637", "Last 90 nights": "#527bba", "Trailing year": "#348979"}
+    sleep_colors = {"Last 7 nights": "#2a78d6", "Last 30 nights": "#eb6834", "Last 90 nights": "#1baf7a", "Trailing year": "#eda100"}
     for label, _, _ in sleep_windows:
         fig.add_scatter(x=sleep_pace.index, y=sleep_pace[label], mode="lines", name=label, line_color=sleep_colors[label], connectgaps=True)
     fig.add_hline(y=sleep_goal, line_dash="dash", line_color="#888", annotation_text=f"Goal: {sleep_goal:g} hrs")
     fig.update_layout(height=340, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="hrs/night", legend=dict(orientation="h", y=-0.25))
-    fig.update_yaxes(rangemode="tozero")
     st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("Weekly drinks · limit of 7")
@@ -236,7 +258,6 @@ else:
         hovertemplate="Week of %{x}: %{y} drinks<br>%{customdata} days recorded<extra></extra>"
     ))
     fig.update_xaxes(type="category")
-    fig.update_yaxes(rangemode="tozero")
     fig.add_hline(y=7, line_dash="dash", line_color="#d48637", annotation_text="Weekly limit: 7")
     fig.update_layout(height=280, xaxis_title="Week starting Monday", yaxis_title="Drinks logged", margin=dict(t=30,b=10))
     st.plotly_chart(fig, use_container_width=True)
@@ -264,12 +285,11 @@ else:
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
     fig = go.Figure()
-    drinks_colors = {"Last 7 days": "#b96048", "Last 30 days": "#d48637", "Last 90 days": "#527bba", "Trailing year": "#348979"}
+    drinks_colors = {"Last 7 days": "#2a78d6", "Last 30 days": "#eb6834", "Last 90 days": "#1baf7a", "Trailing year": "#eda100"}
     for label, _, _ in drinks_windows:
         fig.add_scatter(x=drinks_pace.index, y=drinks_pace[label], mode="lines", name=label, line_color=drinks_colors[label], connectgaps=True)
     fig.add_hline(y=7, line_dash="dash", line_color="#d48637", annotation_text="Weekly limit: 7")
     fig.update_layout(height=340, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="drinks/week", legend=dict(orientation="h", y=-0.25))
-    fig.update_yaxes(rangemode="tozero")
     st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("Explore relationships")
@@ -286,11 +306,19 @@ else:
     c1, c2 = st.columns(2)
     x_col = c1.selectbox("X axis", numeric_cols, index=numeric_cols.index(default_x))
     y_col = c2.selectbox("Y axis", numeric_cols, index=numeric_cols.index(default_y))
-    pair = df[[x_col, y_col]].dropna()
+    smooth = st.checkbox("Smooth each point to its trailing 7-day average", value=False)
+    if smooth:
+        daily_range = pd.date_range(df.Date.min(), df.Date.max(), freq="D")
+        smoothed_x = df.set_index("Date")[x_col].reindex(daily_range).rolling("7D", min_periods=1).mean()
+        smoothed_y = df.set_index("Date")[y_col].reindex(daily_range).rolling("7D", min_periods=1).mean()
+        pair = pd.DataFrame({x_col: smoothed_x, y_col: smoothed_y}).dropna()
+    else:
+        pair = df[[x_col, y_col]].dropna()
     if len(pair) < 2:
         st.info("Not enough overlapping data for these two measurements yet.")
     else:
-        fig = go.Figure(go.Scatter(x=pair[x_col], y=pair[y_col], mode="markers", marker=dict(color="#527bba", size=11, opacity=0.85), name="Days"))
+        point_label = "7-day avg" if smooth else "Days"
+        fig = go.Figure(go.Scatter(x=pair[x_col], y=pair[y_col], mode="markers", marker=dict(color="#527bba", size=11, opacity=0.85), name=point_label))
         has_trend = len(pair) >= 4 and pair[x_col].nunique() > 1 and pair[y_col].nunique() > 1
         if has_trend:
             slope, intercept = np.polyfit(pair[x_col], pair[y_col], 1)
@@ -300,9 +328,12 @@ else:
         st.plotly_chart(fig, use_container_width=True)
         if has_trend:
             r = pair[x_col].corr(pair[y_col])
-            st.caption(f"Correlation across {len(pair)} overlapping days: r = {r:.2f} (−1 to 1; 0 means no linear relationship). The dashed line is a least-squares fit to make the direction easier to see — with this few points it's a rough hint, not evidence, and doesn't imply causation. It will move around a lot as you add more days.")
+            if smooth:
+                st.caption(f"Correlation across {len(pair)} trailing 7-day-average points: r = {r:.2f} (−1 to 1; 0 means no linear relationship). Smoothing trades daily noise for overlap — each point shares up to 6 days with its neighbors, so these points aren't independent and this correlation is an even rougher hint than the daily version, not evidence. It's meant to make a slower-moving trend easier to see by eye, not to imply causation.")
+            else:
+                st.caption(f"Correlation across {len(pair)} overlapping days: r = {r:.2f} (−1 to 1; 0 means no linear relationship). The dashed line is a least-squares fit to make the direction easier to see — with this few points it's a rough hint, not evidence, and doesn't imply causation. It will move around a lot as you add more days.")
         else:
-            st.caption(f"Only {len(pair)} overlapping days so far — too few to compute a meaningful correlation or trend line.")
+            st.caption(f"Only {len(pair)} overlapping {'smoothed points' if smooth else 'days'} so far — too few to compute a meaningful correlation or trend line.")
 
 with st.expander("View imported records"):
     st.dataframe(raw.sort_values("Date"), use_container_width=True, hide_index=True)
