@@ -81,12 +81,25 @@ weight, work, sleep = fields
 
 DAY_COLOR = "#000000"
 WINDOW_COLORS = {"Week average": "#2a78d6", "Month average": "#eb6834", "Quarter average": "#1baf7a", "Year average": "#eda100"}
+MONTHLY_COLOR = "#e87ba4"
 total_days_span = (df.Date.max() - df.Date.min()).days + 1
 
-def add_goal_line(fig, x_values, y, label):
+def hover_fmt(unit, decimals=1):
+    return f"%{{x|%b %d, %Y}}<br>%{{y:.{decimals}f}} {unit}<extra></extra>"
+
+def monthly_calendar_avg(daily, mult=1):
+    """Calendar-month average (distinct from the trailing windows above), plotted at the 15th of each month."""
+    valid = daily.dropna()
+    if valid.empty:
+        return pd.Series(dtype=float)
+    grouped = valid.groupby(valid.index.to_period("M")).mean() * mult
+    idx = grouped.index.to_timestamp() + pd.Timedelta(days=14)
+    return pd.Series(grouped.values, index=idx)
+
+def add_goal_line(fig, x_values, y, label, unit="", decimals=1):
     if len(x_values) == 0:
         return
-    fig.add_scatter(x=[x_values[0], x_values[-1]], y=[y, y], mode="lines", line=dict(color="#888", dash="dash"), name=label)
+    fig.add_scatter(x=[x_values[0], x_values[-1]], y=[y, y], mode="lines", line=dict(color="#888", dash="dash"), name=label, hovertemplate=hover_fmt(unit, decimals))
 
 def trailing_windows():
     windows = [("Week average", "7D", 7), ("Month average", "30D", 30)]
@@ -143,11 +156,15 @@ else:
         box.metric(label, f"{avg:.1f} lbs", f"{avg - weight_goal:+.1f} vs {weight_goal:.1f}-lb goal", delta_color="inverse")
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
+    weight_monthly = monthly_calendar_avg(weight_daily)
+
     fig = go.Figure()
-    fig.add_scatter(x=weight_daily.index, y=weight_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day")
+    fig.add_scatter(x=weight_daily.index, y=weight_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day", hovertemplate=hover_fmt("lbs", 1))
     for label, _, _ in weight_windows:
-        fig.add_scatter(x=weight_pace.index, y=weight_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True)
-    add_goal_line(fig, weight_daily.index, weight_goal, f"Goal: {weight_goal:.1f} lbs")
+        fig.add_scatter(x=weight_pace.index, y=weight_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt("lbs", 1))
+    if not weight_monthly.empty:
+        fig.add_scatter(x=weight_monthly.index, y=weight_monthly.values, mode="markers", marker=dict(color=MONTHLY_COLOR, size=11, symbol="diamond"), name="Monthly avg", hovertemplate=hover_fmt("lbs", 1))
+    add_goal_line(fig, weight_daily.index, weight_goal, f"Goal: {weight_goal:.1f} lbs", unit="lbs", decimals=1)
     fig.update_layout(height=360, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="lbs", legend=dict(orientation="h", y=-0.25))
     fig.update_xaxes(tickformat="%b %d", dtick=86400000 if len(weight_daily) <= 14 else None)
     st.plotly_chart(fig, use_container_width=True)
@@ -175,11 +192,15 @@ for ncol, nlabel, nunit, ngoal in nutrients:
         box.metric(label, f"{rate:.0f} {nunit}", f"{rate - ngoal:+.0f} vs {ngoal:g}-{nunit} goal", delta_color="normal")
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
+    n_monthly = monthly_calendar_avg(n_daily)
+
     fig = go.Figure()
-    fig.add_scatter(x=n_daily.index, y=n_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day")
+    fig.add_scatter(x=n_daily.index, y=n_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day", hovertemplate=hover_fmt(nunit, 0))
     for label, _, _ in n_windows:
-        fig.add_scatter(x=n_pace.index, y=n_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True)
-    add_goal_line(fig, n_daily.index, ngoal, f"Goal: {ngoal:g} {nunit}")
+        fig.add_scatter(x=n_pace.index, y=n_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt(nunit, 0))
+    if not n_monthly.empty:
+        fig.add_scatter(x=n_monthly.index, y=n_monthly.values, mode="markers", marker=dict(color=MONTHLY_COLOR, size=11, symbol="diamond"), name="Monthly avg", hovertemplate=hover_fmt(nunit, 0))
+    add_goal_line(fig, n_daily.index, ngoal, f"Goal: {ngoal:g} {nunit}", unit=nunit, decimals=0)
     fig.update_layout(height=340, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title=nunit, legend=dict(orientation="h", y=-0.3))
     st.plotly_chart(fig, use_container_width=True)
 
@@ -203,27 +224,17 @@ else:
         box.metric(label, f"{rate:.1f} hrs/wk", f"{rate - 40:+.1f} vs 40-hr goal", delta_color="normal")
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
+    work_monthly = monthly_calendar_avg(work_daily, mult=7)
+
     fig = go.Figure()
-    fig.add_bar(x=work_daily.index, y=work_daily, marker_color=DAY_COLOR, name="Day")
+    fig.add_bar(x=work_daily.index, y=work_daily, marker_color=DAY_COLOR, name="Day", hovertemplate=hover_fmt("hours", 1))
     for label, _, _ in windows:
-        fig.add_scatter(x=pace.index, y=pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True)
-    add_goal_line(fig, work_daily.index, 40, "Goal: 40 hrs/wk")
+        fig.add_scatter(x=pace.index, y=pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt("hrs/wk", 1))
+    if not work_monthly.empty:
+        fig.add_scatter(x=work_monthly.index, y=work_monthly.values, mode="markers", marker=dict(color=MONTHLY_COLOR, size=11, symbol="diamond"), name="Monthly avg", hovertemplate=hover_fmt("hrs/wk", 1))
+    add_goal_line(fig, work_daily.index, 40, "Goal: 40 hrs/wk", unit="hrs/wk", decimals=1)
     fig.update_layout(height=360, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="hours (Day) · hrs/week (trailing)", legend=dict(orientation="h", y=-0.25))
     st.plotly_chart(fig, use_container_width=True)
-
-st.subheader("Weekly work · 40-hour goal")
-w = df.dropna(subset=[work]).copy()
-if w.empty:
-    st.info("Add work hours to see weekly totals.")
-else:
-    w["Week starting"] = w.Date - pd.to_timedelta(w.Date.dt.weekday, unit="D")
-    weekly = w.groupby("Week starting")[work].agg(["sum", "count"]).rename(columns={"sum":"Hours logged", "count":"Days recorded"})
-    weekly["Status"] = weekly["Days recorded"].map(lambda n: "Complete" if n == 7 else "Partial")
-    weekly["Goal (hrs)"] = 40
-    weekly["Hours to goal"] = (40 - weekly["Hours logged"]).clip(lower=0)
-    st.metric("Average hours per recorded week", f"{weekly['Hours logged'].mean():.1f} hrs", f"{weekly['Hours logged'].mean() - 40:+.1f} hrs vs 40-hour goal", delta_color="normal")
-    st.caption("Average = total logged work ÷ number of weeks with work entries. Partial weeks are included, so this may understate a full week's work. Missing days and entirely unrecorded weeks are not assumed to be zero.")
-    st.dataframe(weekly, use_container_width=True)
 
 st.subheader("Sleep")
 st.caption(f"Day is that night's logged sleep; the other lines are trailing averages over that many nights, compared to your {sleep_goal:g}-hour goal. Unrecorded nights are left out rather than treated as zero. Quarter and year averages appear once you have enough history for them to mean something.")
@@ -245,11 +256,15 @@ else:
         box.metric(label, f"{rate:.2f} hrs", f"{rate - sleep_goal:+.2f} vs {sleep_goal:g}-hr goal", delta_color="normal")
         box.caption(f"{nights_recorded} of {nights_in_window} nights recorded")
 
+    sleep_monthly = monthly_calendar_avg(sleep_daily)
+
     fig = go.Figure()
-    fig.add_scatter(x=sleep_daily.index, y=sleep_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day")
+    fig.add_scatter(x=sleep_daily.index, y=sleep_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day", hovertemplate=hover_fmt("hrs", 2))
     for label, _, _ in sleep_windows:
-        fig.add_scatter(x=sleep_pace.index, y=sleep_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True)
-    add_goal_line(fig, sleep_daily.index, sleep_goal, f"Goal: {sleep_goal:g} hrs")
+        fig.add_scatter(x=sleep_pace.index, y=sleep_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt("hrs", 2))
+    if not sleep_monthly.empty:
+        fig.add_scatter(x=sleep_monthly.index, y=sleep_monthly.values, mode="markers", marker=dict(color=MONTHLY_COLOR, size=11, symbol="diamond"), name="Monthly avg", hovertemplate=hover_fmt("hrs", 2))
+    add_goal_line(fig, sleep_daily.index, sleep_goal, f"Goal: {sleep_goal:g} hrs", unit="hrs", decimals=2)
     fig.update_layout(height=360, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="hours", legend=dict(orientation="h", y=-0.25))
     st.plotly_chart(fig, use_container_width=True)
 st.caption("Sleep uses your CSV's Sleep time (hours) column; naps are not added. Correlations can wait until you have more data.")
@@ -274,30 +289,17 @@ else:
         box.metric(label, f"{rate:.1f} drinks/wk", f"{rate - 7:+.1f} vs 7-drink limit", delta_color="inverse")
         box.caption(f"{days_recorded} of {days_in_window} days recorded")
 
+    drinks_monthly = monthly_calendar_avg(drinks_daily, mult=7)
+
     fig = go.Figure()
-    fig.add_scatter(x=drinks_daily.index, y=drinks_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day")
+    fig.add_scatter(x=drinks_daily.index, y=drinks_daily, mode="markers", marker=dict(color=DAY_COLOR, size=6), name="Day", hovertemplate=hover_fmt("drinks", 0))
     for label, _, _ in drinks_windows:
-        fig.add_scatter(x=drinks_pace.index, y=drinks_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True)
-    add_goal_line(fig, drinks_daily.index, 7, "Weekly limit: 7")
+        fig.add_scatter(x=drinks_pace.index, y=drinks_pace[label], mode="lines", name=label, line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt("drinks/wk", 1))
+    if not drinks_monthly.empty:
+        fig.add_scatter(x=drinks_monthly.index, y=drinks_monthly.values, mode="markers", marker=dict(color=MONTHLY_COLOR, size=11, symbol="diamond"), name="Monthly avg", hovertemplate=hover_fmt("drinks/wk", 1))
+    add_goal_line(fig, drinks_daily.index, 7, "Weekly limit: 7", unit="drinks/wk", decimals=1)
     fig.update_layout(height=360, margin=dict(l=10, r=20, t=30, b=10), xaxis_title="Date", yaxis_title="drinks (Day) · drinks/week (trailing)", legend=dict(orientation="h", y=-0.25))
     st.plotly_chart(fig, use_container_width=True)
-
-st.subheader("Weekly drinks · limit of 7")
-d = df.dropna(subset=["Drinks"]).copy()
-if d.empty:
-    st.info("Log your drink count in the Drinks column. Enter 0 for an alcohol-free day; leave unrecorded days blank.")
-else:
-    d["Week starting"] = d.Date - pd.to_timedelta(d.Date.dt.weekday, unit="D")
-    drinks_weekly = d.groupby("Week starting")["Drinks"].agg(["sum", "count"]).rename(columns={"sum": "Drinks logged", "count": "Days recorded"})
-    drinks_weekly["Status"] = drinks_weekly.apply(
-        lambda row: "Over limit" if row["Drinks logged"] > 7 else ("Within limit" if row["Days recorded"] == 7 else "Partial · total so far"), axis=1
-    )
-    drinks_weekly["Weekly limit"] = 7
-    latest = drinks_weekly.iloc[-1]
-    st.metric("Latest recorded week · " + drinks_weekly.index[-1].strftime("%b %d, %Y"), f"{latest['Drinks logged']:g} / 7 drinks")
-    st.caption(f"{int(latest['Days recorded'])} of 7 days recorded. Seven is your upper limit, not a target to reach. Partial totals do not confirm a whole week stayed within the limit.")
-    st.dataframe(drinks_weekly, use_container_width=True)
-    st.caption("Totals use your existing Drinks entries. Keep the meaning of one drink consistent when logging. Weeks with no recorded drink counts are omitted.")
 
 st.subheader("Explore relationships")
 st.caption("Pick two measurements to compare. With only a handful of days logged, treat any pattern here as a hint worth watching, not a conclusion — a correlation from under two weeks of data can flip with the next few entries.")
@@ -341,6 +343,3 @@ else:
                 st.caption(f"Correlation across {len(pair)} overlapping days: r = {r:.2f} (−1 to 1; 0 means no linear relationship). The dashed line is a least-squares fit to make the direction easier to see — with this few points it's a rough hint, not evidence, and doesn't imply causation. It will move around a lot as you add more days.")
         else:
             st.caption(f"Only {len(pair)} overlapping {'smoothed points' if smooth else 'days'} so far — too few to compute a meaningful correlation or trend line.")
-
-with st.expander("View imported records"):
-    st.dataframe(raw.sort_values("Date"), use_container_width=True, hide_index=True)
