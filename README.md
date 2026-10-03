@@ -1,8 +1,6 @@
 # Life tracker
 
-Run `./start.command`, or double-click it in Finder. The app runs locally at http://localhost:8501.
-
-Setup if needed: `python3 -m venv .venv`, then `.venv/bin/python -m pip install -r requirements.txt`.
+Run `./start.command`, or double-click it in Finder. The first run installs everything it needs — Python (via Homebrew, if it isn't already installed) and the Python packages in requirements.txt — then starts the app. Later runs skip straight to starting it. The app runs locally at http://localhost:8501.
 
 Upload a full-history CSV exported from your spreadsheet. Without an upload, the app uses the alphabetically last CSV in data/. Uploads replace the displayed dataset and are not written to disk. Keep the original spreadsheet as your source of truth.
 
