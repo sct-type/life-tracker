@@ -24,4 +24,5 @@ fi
 .venv/bin/python -m pip install --upgrade pip --quiet
 .venv/bin/python -m pip install -r requirements.txt --quiet
 
+export LIFETRACKER_LOCAL=1
 exec .venv/bin/python -m streamlit run app.py --server.address 127.0.0.1 --browser.gatherUsageStats false

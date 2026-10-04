@@ -1,12 +1,23 @@
 # Life tracker
 
-Run `./start.command`, or double-click it in Finder. The first run installs everything it needs — Python (via Homebrew, if it isn't already installed) and the Python packages in requirements.txt — then starts the app. Later runs skip straight to starting it. The app runs locally at http://localhost:8501.
+Run `./start.command`, or double-click it in Finder. The first run installs everything it needs (Python via Homebrew if it isn't already installed, plus the packages in requirements.txt), then starts the app. Later runs skip straight to starting it. The app runs locally at http://localhost:8501.
 
-Upload a full-history CSV exported from your spreadsheet. Without an upload, the app uses the alphabetically last CSV in data/. Uploads replace the displayed dataset and are not written to disk. Keep the original spreadsheet as your source of truth.
+## Your data
 
-Required columns: Date, Weight (lbs), Work (hrs), Sleep time (hours). Older CSVs using "Next morning weight (lbs)" still load.
-Use dates with a year for history spanning multiple years. For month/day dates, select the year in the sidebar. Each row is one day, and all charts use the row date.
+Upload a CSV in the sidebar, or drop one in `data/` and the app uses the alphabetically last file there. Uploads are not written to disk. Keep the original spreadsheet as your source of truth.
 
-Weekly work is summed Monday–Sunday. Average weekly work includes each week with a work entry, including partial weeks. Seven recorded days marks a complete week; enter 0 explicitly for non-working days. Unrecorded weeks are excluded. The weekly goal is 40 hours. Sleep goal defaults to 7.5 hours and is adjustable.
+Only a `Date` column is required, one row per day. Every other column that is mostly numbers becomes a metric you can plot. Dates with a year work best. For dates like 3/14, set the year in the sidebar. Leave a cell blank for an unrecorded day. Blank is not zero.
 
-Drink tracking uses the optional Drinks column. Weekly totals run Monday–Sunday with an upper limit of 7, not a consumption target. Blank days remain unknown; zero records an alcohol-free day. A week is marked within limit only when all seven days are recorded; a partial week exceeding 7 is already marked over limit.
+## Your plots
+
+Open "Set up your plots". Each row is a plot: pick a column, a title and unit, and optionally a goal (at least or at most). Set Per to `week` for things you count per week, such as hours worked or drinks. Those show the daily value plus weekly rates (daily average times 7) against a weekly goal.
+
+Each plot shows the daily values with week, month, quarter and year trailing averages, calendar-month averages on the 15th, and the goal line.
+
+## Saving your setup
+
+Download the setup as JSON and load it again from the sidebar. When started with `start.command`, the setup also saves automatically to `config.json` on your computer (not tracked by git).
+
+## Relationships
+
+"Explore relationships" compares two columns. Each point is a non-overlapping day, week (Monday to Sunday) or calendar month, averaged over its recorded days. Weeks and months with too few recorded days are dropped.
