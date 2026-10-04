@@ -258,9 +258,7 @@ def monthly_calendar_avg(daily, mult=1):
     if valid.empty:
         return pd.Series(dtype=float)
     grouped = valid.groupby(valid.index.to_period("M")).mean() * mult
-    centers = grouped.index.to_timestamp() + pd.Timedelta(days=14)
-    centers = centers.where(centers <= valid.index.max(), valid.index.max())  # never past the last value
-    return pd.Series(grouped.values, index=centers)
+    return pd.Series(grouped.values, index=grouped.index.to_timestamp() + pd.Timedelta(days=14))
 
 
 PERIODS = {"Day": None, "Week": "W-SUN", "Month": "M"}

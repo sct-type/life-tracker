@@ -39,7 +39,8 @@ def metric_figure(card, daily, pace, windows, monthly):
         fig.add_scatter(x=daily.index, y=daily, mode="markers", marker=dict(color=DAY_COLOR, size=6),
                         name="Day", hovertemplate=hover_fmt(unit, d))
     for label, _, _ in windows:
-        fig.add_scatter(x=pace.index, y=pace[label], mode="lines", name=label,
+        fig.add_scatter(x=pace.index, y=pace[label], mode="lines",
+                        name="Trailing " + label.lower().replace("average", "avg"),
                         line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt(lines_unit, d))
     if not monthly.empty:
         fig.add_scatter(x=monthly.index, y=monthly.values, mode="markers",
