@@ -18,6 +18,8 @@ DATA_DIR = HERE / "data"
 CONFIG_PATH = HERE / "config.json"
 # Set by start.command. A hosted copy never reads or writes a shared config file.
 LOCAL = os.environ.get("LIFETRACKER_LOCAL") == "1"
+# Saving and loading a setup as JSON works but is switched off for now, so a new user only needs a CSV.
+SHOW_SETUP_FILES = False
 
 st.title("Life Tracker")
 
@@ -66,7 +68,7 @@ def initial_cards():
                 return frame
         except (ValueError, OSError):
             pass
-    return core.default_cards(df, numeric_cols)
+    return core.default_cards(df, numeric_cols, max_shown=0)  # fresh start: nothing ticked
 
 
 signature = tuple(numeric_cols)
@@ -76,10 +78,13 @@ if st.session_state.get("cols_signature") != signature:
     set_cards(kept if kept is not None and len(kept) else initial_cards())
     st.session_state["cols_signature"] = signature
 
-with st.sidebar:
-    st.header("Plot setup")
-    setup_file = st.file_uploader("Load a saved setup (JSON)", type="json", key="setup_upload")
-    if setup_file is not None:
+setup_file = None
+if SHOW_SETUP_FILES:
+    with st.sidebar:
+        st.header("Plot setup")
+        setup_file = st.file_uploader("Load a saved setup (JSON)", type="json", key="setup_upload")
+if setup_file is not None:
+    with st.sidebar:
         file_sig = (setup_file.name, setup_file.size)
         if st.session_state.get("setup_sig") != file_sig:
             st.session_state["setup_sig"] = file_sig
@@ -117,8 +122,9 @@ with st.expander("Set up your plots", expanded=not st.session_state["cards"]["sh
         },
     )
     setup_json = core.cards_to_json(edited)
-    st.download_button("Download this setup (JSON)", setup_json, file_name="life-tracker-setup.json",
-                       mime="application/json")
+    if SHOW_SETUP_FILES:
+        st.download_button("Download this setup (JSON)", setup_json, file_name="life-tracker-setup.json",
+                           mime="application/json")
     if LOCAL:
         try:
             if not CONFIG_PATH.exists() or CONFIG_PATH.read_text() != setup_json:
@@ -126,7 +132,7 @@ with st.expander("Set up your plots", expanded=not st.session_state["cards"]["sh
             st.caption("Saved automatically to config.json on this computer.")
         except OSError:
             st.caption("Could not write config.json here. Use the download button to keep your setup.")
-    else:
+    elif SHOW_SETUP_FILES:
         st.caption("Download the setup to keep it, then load it from the sidebar next time.")
 
 cards = core.clean_cards(edited, numeric_cols)
