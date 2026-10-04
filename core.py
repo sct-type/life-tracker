@@ -221,19 +221,22 @@ def cards_from_json(text, numeric_cols):
 # ------------------------------------------------------- rolling-window math
 
 def trailing_windows(span_days):
-    """Quarter and year averages only appear once there is enough history."""
-    windows = list(ALL_WINDOWS[:2])
-    if span_days > 30:
-        windows.append(ALL_WINDOWS[2])
-    if span_days > 90:
-        windows.append(ALL_WINDOWS[3])
-    return windows
+    """Each average only appears once there is enough history for it."""
+    needed = [1, 7, 30, 90]  # week, month, quarter, year
+    return [w for w, n in zip(ALL_WINDOWS, needed) if span_days > n]
 
 
 def daily_series(df, col):
-    """The metric on every calendar day. Unrecorded days stay NaN (not zero)."""
-    index = pd.date_range(df["Date"].min(), df["Date"].max(), freq="D")
-    return df.set_index("Date")[col].reindex(index)
+    """The metric on every calendar day from its first to its last recorded value.
+
+    Unrecorded days in between stay NaN (not zero). Nothing is drawn past the
+    last recorded value, even if the CSV has later rows.
+    """
+    series = df.set_index("Date")[col].dropna()
+    if series.empty:
+        return series
+    index = pd.date_range(series.index.min(), series.index.max(), freq="D")
+    return series.reindex(index)
 
 
 def trailing(daily, windows, mult=1):
@@ -255,7 +258,9 @@ def monthly_calendar_avg(daily, mult=1):
     if valid.empty:
         return pd.Series(dtype=float)
     grouped = valid.groupby(valid.index.to_period("M")).mean() * mult
-    return pd.Series(grouped.values, index=grouped.index.to_timestamp() + pd.Timedelta(days=14))
+    centers = grouped.index.to_timestamp() + pd.Timedelta(days=14)
+    centers = centers.where(centers <= valid.index.max(), valid.index.max())  # never past the last value
+    return pd.Series(grouped.values, index=centers)
 
 
 PERIODS = {"Day": None, "Week": "W-SUN", "Month": "M"}

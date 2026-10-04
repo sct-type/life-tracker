@@ -136,9 +136,6 @@ df = df.copy()
 for message in core.mask_impossible_hours(df, shown):
     st.warning(message)
 
-span_days = (df["Date"].max() - df["Date"].min()).days
-windows = core.trailing_windows(span_days)
-
 
 def fmt(value, card, rate=True):
     if value is None or pd.isna(value):
@@ -174,12 +171,14 @@ for i, card in enumerate(shown):
         st.info(f"No values recorded in {card['column']}.")
         continue
     mult = 7 if card["per"] == "week" else 1
+    windows = core.trailing_windows((daily.index[-1] - daily.index[0]).days)
     pace, recorded = core.trailing(daily, windows, mult)
     monthly = core.monthly_calendar_avg(daily, mult)
 
-    for box, (label, _, days) in zip(st.columns(len(windows)), windows):
-        box.metric(label, fmt(pace[label].iloc[-1], card))
-        box.caption(f"{int(recorded[label].iloc[-1])} of {days} days recorded")
+    if windows:
+        for box, (label, _, days) in zip(st.columns(len(windows)), windows):
+            box.metric(label, fmt(pace[label].iloc[-1], card))
+            box.caption(f"{int(recorded[label].iloc[-1])} of {days} days recorded")
 
     if card["goal"] is not None:
         st.caption(f"Goal: {card['goal_is']} {fmt(card['goal'], card)}")
