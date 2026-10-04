@@ -137,6 +137,7 @@ def default_cards(df, numeric_cols, max_shown=6):
         show = (not is_flag(df[col])) and shown < max_shown
         shown += int(show)
         rows.append({**CARD_DEFAULTS, "show": show, "column": col, "title": title, "unit": unit})
+    rows.sort(key=lambda r: r["title"].lower())
     return cards_frame(rows)
 
 

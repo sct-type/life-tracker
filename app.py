@@ -104,7 +104,7 @@ with st.expander("Set up your plots", expanded=not st.session_state["cards"]["sh
         hide_index=True,
         column_config={
             "show": st.column_config.CheckboxColumn("Show", default=True),
-            "column": st.column_config.SelectboxColumn("Column", options=numeric_cols, required=True),
+            "column": st.column_config.SelectboxColumn("Column", options=sorted(numeric_cols, key=str.lower), required=True),
             "title": st.column_config.TextColumn("Title"),
             "unit": st.column_config.TextColumn("Unit"),
             "per": st.column_config.SelectboxColumn("Per", options=core.PER_OPTIONS, default="day"),
@@ -202,9 +202,10 @@ else:
     shown_cols = [c["column"] for c in shown]
     defaults = shown_cols + [c for c in numeric_cols if c not in shown_cols]
     c1, c2, c3 = st.columns(3)
-    x_col = c1.selectbox("X axis", numeric_cols, index=numeric_cols.index(defaults[0]), format_func=label_for)
+    ordered = sorted(numeric_cols, key=lambda c: label_for(c).lower())
+    x_col = c1.selectbox("X axis", ordered, index=ordered.index(defaults[0]), format_func=label_for)
     y_default = defaults[1] if len(defaults) > 1 else defaults[0]
-    y_col = c2.selectbox("Y axis", numeric_cols, index=numeric_cols.index(y_default), format_func=label_for)
+    y_col = c2.selectbox("Y axis", ordered, index=ordered.index(y_default), format_func=label_for)
     period = c3.radio("Each point is a", list(core.PERIODS), index=1, horizontal=True)
 
     min_days = 1
