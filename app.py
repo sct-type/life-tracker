@@ -37,7 +37,9 @@ except Exception as exc:
     st.error(f"Could not read this CSV: {exc}")
     st.stop()
 raw.columns = raw.columns.str.strip()
-fields = ["Next morning weight (lbs)", "Work (hrs)", "Sleep time (hours)"]
+# Older CSVs used "next day" column names; accept them so history keeps working.
+raw = raw.rename(columns={"Next morning weight (lbs)": "Weight (lbs)", "Next day feeling (1-10)": "How do I feel (1-10)"})
+fields = ["Weight (lbs)", "Work (hrs)", "Sleep time (hours)"]
 missing = [c for c in ["Date"] + fields if c not in raw.columns]
 if missing:
     st.error("Missing required columns: " + ", ".join(missing))
@@ -75,7 +77,7 @@ df = raw.dropna(subset=fields + optional_cols, how="all").sort_values("Date")
 if df.empty:
     st.info("No weight, work, sleep, drink, or nutrition measurements are available yet.")
     st.stop()
-st.caption(f"Source: {upload.name if upload is not None else source.name} · {len(df)} dates with measurements. Charts use the spreadsheet row date, including next-morning weight and that night's sleep.")
+st.caption(f"Source: {upload.name if upload is not None else source.name} · {len(df)} dates with measurements. Each row is one day; charts use the row date.")
 
 weight, work, sleep = fields
 
@@ -137,7 +139,7 @@ for box, (label, value, unit, goal, decimals, delta_color) in zip(overview_boxes
         box.metric(label, f"{value:.{decimals}f} {unit}", f"{value - goal:+.{decimals}f} vs {goal:g} goal", delta_color=delta_color)
 
 st.subheader("Weight")
-st.caption(f"Day is your next-morning weigh-in; the other lines are trailing averages over that many days, compared to your {weight_goal:.1f}-lb goal (BMI {bmi_goal:g}). Unrecorded days are left out rather than treated as zero. Quarter and year averages appear once you have enough history for them to mean something.")
+st.caption(f"Day is that day's weigh-in; the other lines are trailing averages over that many days, compared to your {weight_goal:.1f}-lb goal (BMI {bmi_goal:g}). Unrecorded days are left out rather than treated as zero. Quarter and year averages appear once you have enough history for them to mean something.")
 w3 = df.dropna(subset=[weight]).copy()
 if w3.empty:
     st.info("Add weight measurements to see this chart.")
@@ -303,8 +305,8 @@ else:
 
 st.subheader("Explore relationships")
 st.caption("Pick two measurements to compare. With only a handful of days logged, treat any pattern here as a hint worth watching, not a conclusion — a correlation from under two weeks of data can flip with the next few entries.")
-candidate_cols = ["Next morning weight (lbs)", "Work (hrs)", "Sleep time (hours)", "Travel day", "Sick", "Drinks", "Calories", "Protein (g)", "Fiber (g)",
-                  "Sleep quality (1-10)", "Next day feeling (1-10)", "Regular exercise (min)", "High-intensity exercise (min)",
+candidate_cols = ["Weight (lbs)", "Work (hrs)", "Sleep time (hours)", "Travel day", "Sick", "Drinks", "Calories", "Protein (g)", "Fiber (g)",
+                  "Sleep quality (1-10)", "How do I feel (1-10)", "Regular exercise (min)", "High-intensity exercise (min)",
                   "Reading (min)", "Awakenings", "Minutes awake overnight", "Nap (min)", "Midnight snack", "Bowel movements"]
 numeric_cols = [c for c in candidate_cols if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
 if len(numeric_cols) < 2:

@@ -4,8 +4,8 @@ Run `./start.command`, or double-click it in Finder. The first run installs ever
 
 Upload a full-history CSV exported from your spreadsheet. Without an upload, the app uses the alphabetically last CSV in data/. Uploads replace the displayed dataset and are not written to disk. Keep the original spreadsheet as your source of truth.
 
-Required columns: Date, Next morning weight (lbs), Work (hrs), Sleep time (hours).
-Use dates with a year for history spanning multiple years. For month/day dates, select the year in the sidebar. All charts use the spreadsheet row date, including next-morning weight and overnight sleep.
+Required columns: Date, Weight (lbs), Work (hrs), Sleep time (hours). Older CSVs using "Next morning weight (lbs)" still load.
+Use dates with a year for history spanning multiple years. For month/day dates, select the year in the sidebar. Each row is one day, and all charts use the row date.
 
 Weekly work is summed Monday–Sunday. Average weekly work includes each week with a work entry, including partial weeks. Seven recorded days marks a complete week; enter 0 explicitly for non-working days. Unrecorded weeks are excluded. The weekly goal is 40 hours. Sleep goal defaults to 7.5 hours and is adjustable.
 
