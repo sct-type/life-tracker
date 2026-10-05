@@ -1,4 +1,4 @@
-"""Life Tracker: upload a CSV, choose which columns to plot, set goals."""
+"""Tally: upload a CSV, choose which columns to plot, set goals."""
 import os
 from datetime import date
 from pathlib import Path
@@ -11,7 +11,7 @@ import streamlit as st
 import core
 import plots
 
-st.set_page_config(page_title="Life Tracker", layout="wide")
+st.set_page_config(page_title="Tally", layout="wide")
 
 HERE = Path(__file__).parent
 DATA_DIR = HERE / "data"
@@ -21,7 +21,9 @@ LOCAL = os.environ.get("LIFETRACKER_LOCAL") == "1"
 # Saving and loading a setup as JSON works but is switched off for now, so a new user only needs a CSV.
 SHOW_SETUP_FILES = False
 
-st.title("Life Tracker")
+st.title("Tally")
+st.caption("Tally turns the spreadsheet you already keep into plots and patterns. "
+           "One row a day, your own columns. No wearable, no lock-in.")
 
 # ------------------------------------------------------------------ sidebar
 with st.sidebar:
@@ -38,8 +40,13 @@ elif DATA_DIR.is_dir() and sorted(DATA_DIR.glob("*.csv")):
     source, source_name = path, path.name
 
 if source is None:
-    st.info("Upload a CSV in the sidebar to begin. It needs a Date column and at least one numeric column. "
-            "Each row is one day.")
+    st.markdown(
+        "**How to start.** Make a CSV with a Date column and one row per day. "
+        "Add a column for anything you track: weight, sleep, work hours, how you feel. "
+        "Leave a cell blank for a day you did not log it. "
+        "Then upload the file in the sidebar, pick what to plot, and set goals."
+    )
+    st.caption("Your file is read in memory and never stored.")
     st.stop()
 
 try:

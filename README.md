@@ -1,4 +1,6 @@
-# Life tracker
+# Tally
+
+Tally turns the spreadsheet you already keep into plots and patterns. One row a day, your own columns. No wearable, no lock-in.
 
 Run `./start.command`, or double-click it in Finder. The first run installs everything it needs (Python via Homebrew if it isn't already installed, plus the packages in requirements.txt), then starts the app. Later runs skip straight to starting it. The app runs locally at http://localhost:8501.
 
