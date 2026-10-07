@@ -33,14 +33,22 @@ st.caption("Tally turns the spreadsheet you already keep into plots and patterns
 # ------------------------------------------------------------------ data source
 OPT_UPLOAD, OPT_LINK = "Upload a CSV", "Paste a link"
 ALLOWED_HOSTS = ("docs.google.com",)
+# Saved names and their published-sheet links. NOT secure: this file is in a public repo, so anyone
+# can read these links. Move them to Streamlit secrets later. An empty link means "not set up yet".
+PEOPLE = {
+    "Steve T": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSm_DVnOPq0Z4zXT7AywU6sniEhcKvwoZG4upTfrKYfq_TSWfsl4CA2y1QZjZ7ZM2VBPdXN0V6-q5sW/pub?gid=0&single=true&output=csv",
+    "Charli T": "",
+}
 
 
 def configured_people():
-    """Names and published-sheet links from the app's secrets. Never stored in the repo."""
+    """The built-in names, plus any added or overridden in Streamlit secrets."""
+    people = dict(PEOPLE)
     try:
-        return {str(k): str(v).strip() for k, v in dict(st.secrets.get("people", {})).items()}
+        people.update({str(k): str(v).strip() for k, v in dict(st.secrets.get("people", {})).items()})
     except Exception:
-        return {}
+        pass
+    return people
 
 
 @st.cache_data(ttl=300, show_spinner="Loading your sheet...")

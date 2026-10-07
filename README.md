@@ -26,12 +26,11 @@ Every visit starts with no plots on. Tick what you want. Remembering a setup is 
 
 ## Saved names
 
-Names and sheet links live in Streamlit secrets, never in the repo, because a published link lets anyone with it read the sheet. Locally, put them in `.streamlit/secrets.toml` (gitignored). On Streamlit Community Cloud, paste the same text into the app's Settings, then Secrets.
+The names and sheet links are hard-coded in `PEOPLE` near the top of `app.py`. That is not secure: a published link lets anyone who has it read the sheet, and this repo is public. Moving the links into Streamlit secrets is the fix for later. Secrets, if present, add to or override the built-in names:
 
 ```toml
 [people]
-"Name One" = "https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv"
-"Name Two" = ""
+"Name" = "https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv"
 ```
 
 An empty link shows "no sheet link yet". Anyone who can open the app can pick any saved name.
