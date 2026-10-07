@@ -1,7 +1,10 @@
 """Tally: upload a CSV, choose which columns to plot, set goals."""
+import io
 import os
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 import numpy as np
 import pandas as pd
@@ -20,22 +23,68 @@ CONFIG_PATH = HERE / "config.json"
 LOCAL = os.environ.get("LIFETRACKER_LOCAL") == "1"
 # Saving and loading a setup as JSON works but is switched off for now, so a new user only needs a CSV.
 SHOW_SETUP_FILES = False
+# Remembering your plots in config.json on this computer is switched off, so every visit starts with no plots on.
+USE_LOCAL_CONFIG = False
 
 st.title("Tally")
 st.caption("Tally turns the spreadsheet you already keep into plots and patterns. "
            "One row a day, your own columns. No wearable, no lock-in.")
 
-# ------------------------------------------------------------------ sidebar
+# ------------------------------------------------------------------ data source
+OPT_UPLOAD, OPT_LINK = "Upload a CSV", "Paste a link"
+ALLOWED_HOSTS = ("docs.google.com",)
+
+
+def configured_people():
+    """Names and published-sheet links from the app's secrets. Never stored in the repo."""
+    try:
+        return {str(k): str(v).strip() for k, v in dict(st.secrets.get("people", {})).items()}
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=300, show_spinner="Loading your sheet...")
+def fetch_sheet(url):
+    """Download a published Google Sheet as CSV bytes (cached for five minutes)."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
+        raise ValueError("Use a link from Google Sheets: File, Share, Publish to web, CSV.")
+    try:
+        with urlopen(Request(url, headers={"User-Agent": "Tally"}), timeout=20) as response:
+            data = response.read(20_000_000)
+    except Exception:
+        raise ValueError("Could not load that sheet. Check that it is published to the web as CSV.")
+    if data.lstrip()[:1] == b"<":
+        raise ValueError("That link returned a web page, not CSV. Publish the sheet as CSV.")
+    return data
+
+
+people = configured_people()
 with st.sidebar:
     st.header("Data")
-    uploaded = st.file_uploader("CSV file", type="csv")
+    choice = st.selectbox("Data from", list(people) + [OPT_UPLOAD, OPT_LINK])
+    uploaded, pasted = None, ""
+    if choice == OPT_UPLOAD:
+        uploaded = st.file_uploader("CSV file", type="csv")
+    elif choice == OPT_LINK:
+        pasted = st.text_input("Published Google Sheet link (CSV)").strip()
     year = st.number_input("Year for dates like 3/14", min_value=2000, max_value=2100,
                            value=date.today().year, step=1)
 
 source, source_name = None, None
-if uploaded is not None:
+link = people.get(choice, pasted if choice == OPT_LINK else "")
+if choice in people and not link:
+    st.info(f"{choice} has no sheet link yet.")
+    st.stop()
+if link:
+    try:
+        source, source_name = io.BytesIO(fetch_sheet(link)), choice if choice in people else "Google Sheet"
+    except ValueError as exc:
+        st.error(str(exc))
+        st.stop()
+elif uploaded is not None:
     source, source_name = uploaded, uploaded.name
-elif DATA_DIR.is_dir() and sorted(DATA_DIR.glob("*.csv")):
+elif choice == OPT_UPLOAD and DATA_DIR.is_dir() and sorted(DATA_DIR.glob("*.csv")):
     path = sorted(DATA_DIR.glob("*.csv"))[-1]
     source, source_name = path, path.name
 
@@ -44,7 +93,8 @@ if source is None:
         "**How to start.** Make a CSV with a Date column and one row per day. "
         "Add a column for anything you track: weight, sleep, work hours, how you feel. "
         "Leave a cell blank for a day you did not log it. "
-        "Then upload the file in the sidebar, pick what to plot, and set goals."
+        "Then upload the file in the sidebar, or paste a link to a Google Sheet published as CSV. "
+        "Pick what to plot and set goals."
     )
     st.caption("Your file is read in memory and never stored.")
     st.stop()
@@ -68,7 +118,7 @@ def set_cards(frame):
 
 
 def initial_cards():
-    if LOCAL and CONFIG_PATH.exists():
+    if LOCAL and USE_LOCAL_CONFIG and CONFIG_PATH.exists():
         try:
             frame, _ = core.cards_from_json(CONFIG_PATH.read_text(), numeric_cols)
             if len(frame):
@@ -78,9 +128,11 @@ def initial_cards():
     return core.default_cards(df, numeric_cols, max_shown=0)  # fresh start: nothing ticked
 
 
-signature = tuple(numeric_cols)
+signature = (source_name, tuple(numeric_cols))
 if st.session_state.get("cols_signature") != signature:
-    previous = st.session_state.get("cards")
+    # A different person or file starts from its own setup. Same file with new columns keeps matching rows.
+    same_source = st.session_state.get("cols_signature", (None,))[0] == source_name
+    previous = st.session_state.get("cards") if same_source else None
     kept = previous[previous["column"].isin(numeric_cols)] if previous is not None else None
     set_cards(kept if kept is not None and len(kept) else initial_cards())
     st.session_state["cols_signature"] = signature
@@ -132,7 +184,7 @@ with st.expander("Set up your plots", expanded=not st.session_state["cards"]["sh
     if SHOW_SETUP_FILES:
         st.download_button("Download this setup (JSON)", setup_json, file_name="life-tracker-setup.json",
                            mime="application/json")
-    if LOCAL:
+    if LOCAL and USE_LOCAL_CONFIG:
         try:
             if not CONFIG_PATH.exists() or CONFIG_PATH.read_text() != setup_json:
                 CONFIG_PATH.write_text(setup_json)

@@ -6,7 +6,7 @@ Run `./start.command`, or double-click it in Finder. The first run installs ever
 
 ## Your data
 
-Upload a CSV in the sidebar, or drop one in `data/` and the app uses the alphabetically last file there. Uploads are not written to disk. Keep the original spreadsheet as your source of truth.
+Pick a source in the sidebar. Upload a CSV, paste a link to a Google Sheet published as CSV (File, Share, Publish to web, CSV), or choose a saved name. Locally, with Upload selected and nothing uploaded, the app uses the alphabetically last file in `data/`. Uploads are not written to disk. Keep the original spreadsheet as your source of truth.
 
 Only a `Date` column is required, one row per day. Every other column that is mostly numbers becomes a metric you can plot. Dates with a year work best. For dates like 3/14, set the year in the sidebar. Leave a cell blank for an unrecorded day. Blank is not zero.
 
@@ -18,8 +18,20 @@ Each plot shows the daily values with week, month, quarter and year trailing ave
 
 ## Saving your setup
 
-When started with `start.command`, your plot setup saves automatically to `config.json` on your computer (not tracked by git). A hosted copy starts fresh each visit: load your CSV and tick the plots you want. Download/upload of the setup as JSON is built but switched off for now (`SHOW_SETUP_FILES` in `app.py`).
+Every visit starts with no plots on. Tick what you want. Remembering a setup is built but switched off for now: `USE_LOCAL_CONFIG` in `app.py` saves it to `config.json` on your computer (not tracked by git), and `SHOW_SETUP_FILES` adds JSON download and upload.
 
 ## Relationships
 
 "Explore relationships" compares two columns. Each point is a non-overlapping day, week (Monday to Sunday) or calendar month, averaged over its recorded days. Weeks and months with too few recorded days are dropped.
+
+## Saved names
+
+Names and sheet links live in Streamlit secrets, never in the repo, because a published link lets anyone with it read the sheet. Locally, put them in `.streamlit/secrets.toml` (gitignored). On Streamlit Community Cloud, paste the same text into the app's Settings, then Secrets.
+
+```toml
+[people]
+"Name One" = "https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv"
+"Name Two" = ""
+```
+
+An empty link shows "no sheet link yet". Anyone who can open the app can pick any saved name.
