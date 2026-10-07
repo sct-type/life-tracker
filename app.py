@@ -1,7 +1,6 @@
 """Tally: upload a CSV, choose which columns to plot, set goals."""
 import io
 import os
-from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -76,8 +75,6 @@ with st.sidebar:
         uploaded = st.file_uploader("CSV file", type="csv")
     elif choice == OPT_LINK:
         pasted = st.text_input("Published Google Sheet link (CSV)").strip()
-    year = st.number_input("Year for dates like 3/14", min_value=2000, max_value=2100,
-                           value=date.today().year, step=1)
 
 source, source_name = None, None
 link = people.get(choice, pasted if choice == OPT_LINK else "")
@@ -108,7 +105,7 @@ if source is None:
     st.stop()
 
 try:
-    df, numeric_cols, load_warnings = core.load_csv(source, int(year))
+    df, numeric_cols, load_warnings = core.load_csv(source)
 except ValueError as exc:
     st.error(str(exc))
     st.stop()

@@ -8,7 +8,7 @@ Run `./start.command`, or double-click it in Finder. The first run installs ever
 
 Pick a source in the sidebar. Upload a CSV, paste a link to a Google Sheet published as CSV (File, Share, Publish to web, CSV), or choose a saved name. Locally, with Upload selected and nothing uploaded, the app uses the alphabetically last file in `data/`. Uploads are not written to disk. Keep the original spreadsheet as your source of truth.
 
-Only a `Date` column is required, one row per day. Every other column that is mostly numbers becomes a metric you can plot. Dates with a year work best. For dates like 3/14, set the year in the sidebar. Leave a cell blank for an unrecorded day. Blank is not zero.
+Only a `Date` column is required, one row per day. Every other column that is mostly numbers becomes a metric you can plot. Write dates as MM/DD/YYYY, like 09/30/2026. Dates like 2026-09-30 also work. Dates without a year do not. Leave a cell blank for an unrecorded day. Blank is not zero.
 
 ## Your plots
 

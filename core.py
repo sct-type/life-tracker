@@ -43,16 +43,17 @@ HOURS_UNITS = {"hr", "hrs", "hour", "hours"}
 
 # ---------------------------------------------------------------- loading
 
-def parse_date(value, year):
-    if pd.isna(value):
-        return pd.NaT
-    value = str(value).strip()
-    if re.fullmatch(r"\d{1,2}/\d{1,2}", value):
-        value += f"/{year}"
-    return pd.to_datetime(value, errors="coerce")
+def parse_dates(values):
+    """Dates written MM/DD/YYYY (also M/D/YYYY). ISO dates like 2026-09-30 are accepted too."""
+    text = values.astype("string").str.strip()
+    parsed = pd.to_datetime(text, format="%m/%d/%Y", errors="coerce")
+    other = parsed.isna() & text.notna()
+    if other.any():
+        parsed[other] = pd.to_datetime(text[other], format="ISO8601", errors="coerce")
+    return parsed
 
 
-def load_csv(source, year):
+def load_csv(source):
     """Read a tracker CSV.
 
     Returns (df, numeric_cols, warnings). Raises ValueError with a friendly
@@ -70,12 +71,12 @@ def load_csv(source, year):
         raise ValueError("The CSV needs a column named Date.")
 
     raw = raw.dropna(how="all")
-    raw["Date"] = raw["Date"].map(lambda v: parse_date(v, year))
+    raw["Date"] = parse_dates(raw["Date"])
     if raw["Date"].isna().any():
         warnings.append("Rows with missing or unreadable dates were excluded.")
     raw = raw.dropna(subset=["Date"])
     if raw.empty:
-        raise ValueError("No rows with readable dates were found.")
+        raise ValueError("No rows with readable dates were found. Write dates as MM/DD/YYYY, like 09/30/2026.")
     if raw["Date"].duplicated().any():
         raise ValueError("The CSV has duplicate dates. Keep one row per date.")
 
