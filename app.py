@@ -50,9 +50,9 @@ def configured_people():
     return people
 
 
-@st.cache_data(ttl=300, show_spinner="Loading your sheet...")
+@st.cache_data(ttl=120, show_spinner="Loading your sheet...")
 def fetch_sheet(url):
-    """Download a published Google Sheet as CSV bytes (cached for five minutes)."""
+    """Download a published Google Sheet as CSV bytes (cached for two minutes)."""
     parsed = urlparse(url)
     if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
         raise ValueError("Use a link from Google Sheets: File, Share, Publish to web, CSV.")
@@ -70,6 +70,8 @@ people = configured_people()
 with st.sidebar:
     st.header("Data")
     choice = st.selectbox("Data from", list(people) + [OPT_UPLOAD, OPT_LINK])
+    if choice != OPT_UPLOAD and st.button("Refresh data"):
+        st.cache_data.clear()
     uploaded, pasted = None, ""
     if choice == OPT_UPLOAD:
         uploaded = st.file_uploader("CSV file", type="csv")

@@ -71,12 +71,15 @@ def load_csv(source):
         raise ValueError("The CSV needs a column named Date.")
 
     raw = raw.dropna(how="all")
+    sample = [str(v) for v in raw["Date"].dropna().astype(str).str.strip().head(3)]
     raw["Date"] = parse_dates(raw["Date"])
     if raw["Date"].isna().any():
         warnings.append("Rows with missing or unreadable dates were excluded.")
     raw = raw.dropna(subset=["Date"])
     if raw.empty:
-        raise ValueError("No rows with readable dates were found. Write dates as MM/DD/YYYY, like 09/30/2026.")
+        seen = ", ".join(f"\"{v}\"" for v in sample) or "none"
+        raise ValueError(f"No rows with readable dates were found. The first dates I saw were {seen}. "
+                         "Write dates as MM/DD/YYYY, like 09/30/2026.")
     if raw["Date"].duplicated().any():
         raise ValueError("The CSV has duplicate dates. Keep one row per date.")
 
