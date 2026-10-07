@@ -36,15 +36,16 @@ def metric_figure(card, daily, pace, windows, monthly):
     if card["daily_as"] == "bars":
         fig.add_bar(x=daily.index, y=daily, marker_color=DAY_COLOR, name="Day", hovertemplate=hover_fmt(unit, d))
     else:
-        fig.add_scatter(x=daily.index, y=daily, mode="markers", marker=dict(color=DAY_COLOR, size=6),
-                        name="Day", hovertemplate=hover_fmt(unit, d))
+        fig.add_scatter(x=daily.index, y=daily, mode="lines+markers", marker=dict(color=DAY_COLOR, size=6),
+                        line=dict(color="#b0b0b0", width=1), connectgaps=True, name="Day", hovertemplate=hover_fmt(unit, d))
     for label, _, _ in windows:
         fig.add_scatter(x=pace.index, y=pace[label], mode="lines",
                         name="Trailing " + label.lower().replace("average", "avg"),
                         line_color=WINDOW_COLORS[label], connectgaps=True, hovertemplate=hover_fmt(lines_unit, d))
     if not monthly.empty:
-        fig.add_scatter(x=monthly.index, y=monthly.values, mode="markers",
+        fig.add_scatter(x=monthly.index, y=monthly.values, mode="lines+markers",
                         marker=dict(color=MONTHLY_COLOR, size=11, symbol="diamond"),
+                        line=dict(color=MONTHLY_COLOR, width=1),
                         name="Monthly avg", hovertemplate=hover_fmt(lines_unit, d))
     if card["goal"] is not None:
         fig.add_scatter(x=[daily.index[0], daily.index[-1]], y=[card["goal"]] * 2, mode="lines",
